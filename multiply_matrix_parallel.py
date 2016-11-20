@@ -1,6 +1,10 @@
-global num_of_matrices
+from multiprocessing import Pool
+import time
 
-def read_matrices(filename):
+global num_of_matrices, time_simple, time_multi
+
+
+def read_matrices(filename, num=0):
     global num_of_matrices
     all_matrixes = []
     matrix = []
@@ -16,8 +20,9 @@ def read_matrices(filename):
                     m.append(float(l))
                 matrix.append(m)
     myfile.close()
+    if(num != 0):
+        all_matrixes = all_matrixes[0:num]
     num_of_matrices = len(all_matrixes)
-    print all_matrixes
     return all_matrixes
 
 
@@ -26,13 +31,17 @@ def save_result_matrix_to_file(matrix, filename):
         for row in matrix:
             a = ""
             for el in row:
-                a += "%8.4f" % el
+                a += "%150.2f" % el
 
             result_file.write("[" + a + "]\n")
         result_file.write("Result of multiplication of %d  matrices in basic file." % num_of_matrices)
+        result_file.write("\nBez watkow\n --- Execution time: %s seconds ---" % time_simple)
+        result_file.write("\nWatki\n --- Execution time: %s seconds ---" % time_multi)
     result_file.close()
 
+
 def multiply_all_matrices(arr_of_matrixes):
+    arr_of_matrixes.reverse()
     while len(arr_of_matrixes) != 1:
         X = arr_of_matrixes.pop()
         Y = arr_of_matrixes.pop()
@@ -46,17 +55,48 @@ def multiply_matrices(X, Y):
              for col_y in zip_y] for row_x in X]
 
 
+def simple_run(filename):
+    global time_simple
+    m = read_matrices(filename, 100)
+    start_time = time.time()
+    result = multiply_all_matrices(m)
+    stop_time = time.time()
+    time_simple = (stop_time - start_time)
+    print "--- Execution time: %s seconds ---" % (stop_time - start_time)
+    return result
 
-filename = 'test_min.txt'
-m = read_matrices(filename)
 
-result = multiply_all_matrices(m)
-for row in result:
-    a = ""
-    for el in row:
-        a += "%47.2f" %el
+def multi_run(filename):
+    global time_multi
+    m = read_matrices(filename, 100)
+    start_time = time.time()
+    p = Pool(6)
+    result = p.map(multiply_all_matrices, devide_array(m))
+    r = multiply_all_matrices(result)
+    stop_time = time.time()
+    time_multi = (stop_time - start_time)
+    print "--- Execution time: %s seconds ---" % (stop_time - start_time)
+    return r
 
-    print "[" + a + "]"
 
-print "In file: %s, num of matrixes in file %d" %(filename, num_of_matrices)
-save_result_matrix_to_file(result, 'result_m.txt')
+def devide_array(matrices_arr):
+    length = len(matrices_arr) / 3
+    # length = len(matrices_arr) / 4
+    result = [[],[],[]]
+    # result = [[],[],[],[]]
+    result[0] = matrices_arr[0:length]
+    result[1] = matrices_arr[length: 2*length]
+    result[2] = matrices_arr[2*length:]
+    # result[2] = matrices_arr[2*length: 3*length]
+    # result[3] = matrices_arr[3*length:]
+    return result
+
+
+if __name__== '__main__':
+    filename = 'sample-matrices.txt'
+
+    print "Bez watkow: "
+    simple_run(filename)
+    print("Watki : ")
+    r = multi_run(filename)
+    save_result_matrix_to_file(r, 'r_d_100.txt')
